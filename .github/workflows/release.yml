@@ -140,7 +140,7 @@ jobs:
         uses: "actions/upload-artifact@v3"
         with:
           name: "cainome-${{ matrix.target }}"
-          path: "target/${{ matrix.target }}/release/${{ matrix.exe }}"
+          path: "target/${{ matrix.target }}/release/"
 
       - name: "Tar release"
         if: matrix.os != 'windows-latest'
