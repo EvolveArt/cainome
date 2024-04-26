@@ -23,6 +23,31 @@ abigen!(
 );
 //abigen!(MyContract, "./contracts/abi/simple_get_set.abi.json");
 
+struct Test<A>
+where
+    A: ConnectedAccount + Send + Sync + std::fmt::Debug,
+{
+    account: Arc<A>,
+}
+
+impl<A> Test<A>
+where
+    A: ConnectedAccount + Send + Sync + std::fmt::Debug,
+{
+    pub fn new(signer: LocalWallet, address: FieldElement, provider: AnyProvider) -> Self {
+        let account = SingleOwnerAccount::new(
+            provider,
+            signer,
+            address,
+            FieldElement::from_hex_be(KATANA_CHAIN_ID).unwrap(),
+            ExecutionEncoding::New,
+        );
+        Self {
+            account: Arc::new(account),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let rpc_url = Url::parse("http://0.0.0.0:5050").expect("Expecting Starknet RPC URL");
@@ -65,13 +90,17 @@ async fn main() {
     ));
     let address = FieldElement::from_hex_be(KATANA_ACCOUNT_0).unwrap();
 
-    let account = Arc::new(SingleOwnerAccount::new(
-        provider,
-        signer,
-        address,
-        FieldElement::from_hex_be(KATANA_CHAIN_ID).unwrap(),
-        ExecutionEncoding::New,
-    ));
+    let account: Arc<SingleOwnerAccount<AnyProvider, LocalWallet>> =
+        Arc::new(SingleOwnerAccount::new(
+            provider,
+            signer,
+            address,
+            FieldElement::from_hex_be(KATANA_CHAIN_ID).unwrap(),
+            ExecutionEncoding::New,
+        ));
+
+    let test: Test<SingleOwnerAccount<AnyProvider, LocalWallet>> =
+        Test::new(signer, address, provider);
 
     // A `Contract` exposes all the methods of the ABI, which includes the views (as the `ContractReader`) and
     // the externals (sending transaction).
@@ -140,7 +169,9 @@ async fn main() {
     handle.await.unwrap();
 }
 
-async fn other_func<A: ConnectedAccount + Sync + 'static>(contract: Arc<MyContract<A>>) {
+async fn other_func<A: ConnectedAccount + Sync + Send + std::fmt::Debug>(
+    contract: Arc<MyContract<A>>,
+) {
     let set_b = contract.set_b(&U256 { low: 0xfe, high: 0 });
 
     // Example of estimation of fees.
